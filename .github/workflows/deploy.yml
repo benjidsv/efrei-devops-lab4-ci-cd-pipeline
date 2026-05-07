@@ -25,9 +25,8 @@ jobs:
         run: |
           cat > .env << EOF
           REACT_APP_API_URL=${{ secrets.REACT_APP_API_URL }}
+          APP_SECRET_NAME=${{ secrets.APP_SECRET_NAME }}
           EOF
-        env:
-          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
 
       - name: Build and push frontend
         uses: docker/build-push-action@v4
