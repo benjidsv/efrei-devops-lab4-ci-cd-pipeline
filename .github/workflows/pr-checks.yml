@@ -1,0 +1,74 @@
+name: PR Checks (dev branch)
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app: [frontend, backend]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.app }}/package-lock.json'
+
+      - name: Install dependencies (${{ matrix.app }})
+        run: npm ci
+        working-directory: ${{ matrix.app }}
+
+      - name: Run linting (${{ matrix.app }})
+        run: npm run lint
+        working-directory: ${{ matrix.app }}
+
+      - name: Run npm audit (${{ matrix.app }})
+        run: npm audit --audit-level=moderate
+        working-directory: ${{ matrix.app }}
+
+      - name: Run tests (${{ matrix.app }})
+        run: npm test -- --coverage --watchAll=false
+        working-directory: ${{ matrix.app }}
+        continue-on-error: true
+
+  snyk-security:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app: [frontend, backend]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
+      - name: Run Snyk scan (${{ matrix.app }})
+        run: snyk test --severity-threshold=high
+        working-directory: ${{ matrix.app }}
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        continue-on-error: true
+
+  build-docker:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        app: [frontend, backend]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build Docker image (${{ matrix.app }})
+        run: docker build -t ${{ matrix.app }}:${{ github.sha }} ./${{ matrix.app }}/
